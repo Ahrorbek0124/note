@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumina Notes - Personal Knowledge & Project Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0a0a0a',
+                            card: '#111111',
+                            border: '#1f1f1f',
+                            hover: '#1a1a1a',
+                            sidebar: '#0d0d0d'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #333 transparent;
+        }
+        *::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        *::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        *::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in {
+            animation: slideIn 0.2s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .editor-toolbar button {
+            transition: all 0.15s;
+        }
+        .editor-toolbar button:hover {
+            background: var(--hover-color);
+        }
+        .editor-toolbar button.active {
+            background: #2563eb;
+        }
+        .folder-item, .note-card {
+            transition: all 0.15s;
+        }
+        .folder-item:hover, .note-card:hover {
+            background: var(--hover-color);
+            transform: translateX(2px);
+        }
+        .file-card {
+            transition: all 0.2s;
+        }
+        .file-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+        .drag-over {
+            border-color: #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.05) !important;
+        }
+        .chat-message {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator span {
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+        .folder-item .folder-actions, .note-card .note-actions {
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .folder-item:hover .folder-actions, .note-card:hover .note-actions {
+            opacity: 1;
+        }
+        #noteEditor:empty:before {
+            content: attr(data-placeholder);
+            color: #6b7280;
+            pointer-events: none;
+        }
+
+        /* Theme Variables */
+        .theme-dark {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #0d0d0d;
+            --border-color: #1f1f1f;
+            --hover-color: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+        }
+        .theme-light {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-tertiary: #f3f4f6;
+            --border-color: #e5e7eb;
+            --hover-color: #f3f4f6;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+        }
+        .theme-ocean {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #0c1526;
+            --border-color: #334155;
+            --hover-color: #293548;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+        .theme-forest {
+            --bg-primary: #0a2817;
+            --bg-secondary: #0f3a24;
+            --bg-tertiary: #071f11;
+            --border-color: #1a4d2e;
+            --hover-color: #143d26;
+            --text-primary: #ecfdf5;
+            --text-secondary: #86efac;
+        }
+        .theme-sunset {
+            --bg-primary: #2d1b1e;
+            --bg-secondary: #3d2529;
+            --bg-tertiary: #1f1214;
+            --border-color: #4d3034;
+            --hover-color: #352023;
+            --text-primary: #fef2f2;
+            --text-secondary: #fca5a5;
+        }
+        .theme-lavender {
+            --bg-primary: #1a1625;
+            --bg-secondary: #252035;
+            --bg-tertiary: #120e1a;
+            --border-color: #342d47;
+            --hover-color: #1f1a2d;
+            --text-primary: #faf5ff;
+            --text-secondary: #d8b4fe;
+        }
+        .theme-nord {
+            --bg-primary: #2e3440;
+            --bg-secondary: #3b4252;
+            --bg-tertiary: #2b3240;
+            --border-color: #4c566a;
+            --hover-color: #434c5e;
+            --text-primary: #eceff4;
+            --text-secondary: #d8dee9;
+        }
+        .theme-monokai {
+            --bg-primary: #272822;
+            --bg-secondary: #3e3d32;
+            --bg-tertiary: #1e1f1c;
+            --border-color: #49483e;
+            --hover-color: #383830;
+            --text-primary: #f8f8f2;
+            --text-secondary: #a6e22e;
+        }
+        .theme-dracula {
+            --bg-primary: #282a36;
+            --bg-secondary: #44475a;
+            --bg-tertiary: #21222c;
+            --border-color: #6272a4;
+            --hover-color: #383a59;
+            --text-primary: #f8f8f2;
+            --text-secondary: #bd93f9;
+        }
+        .theme-solarized {
+            --bg-primary: #002b36;
+            --bg-secondary: #073642;
+            --bg-tertiary: #001e26;
+            --border-color: #586e75;
+            --hover-color: #0d3640;
+            --text-primary: #fdf6e3;
+            --text-secondary: #93a1a1;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .bg-main {
+            background-color: var(--bg-primary);
+        }
+        .bg-secondary {
+            background-color: var(--bg-secondary);
+        }
+        .bg-tertiary {
+            background-color: var(--bg-tertiary);
+        }
+        .border-main {
+            border-color: var(--border-color);
+        }
+        .text-primary {
+            color: var(--text-primary);
+        }
+        .text-secondary {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body class="theme-dark overflow-hidden">
+    
+    <!-- Auth Screen -->
+    <div id="authScreen" class="fixed inset-0 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center p-4 z-50">
+        <div class="bg-secondary border border-main rounded-2xl max-w-md w-full p-8 fade-in shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white text-3xl shadow-lg">
+                    L
+                </div>
+                <h1 class="text-4xl font-bold mb-2 text-primary">Lumina Notes</h1>
+                <p class="text-secondary text-lg">Your Personal Knowledge Hub</p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="loginForm">
+                <form id="loginFormSubmit" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-primary">Email or Username</label>
+                        <input type="text" id="loginEmailOrUsername" class="w-full bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-primary">Password</label>
+                        <input type="password" id="loginPassword" class="w-full bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-all shadow-lg">
+                        Sign In
+                    </button>
+                </form>
+                <div class="my-4 flex items-center gap-3">
+                    <div class="flex-1 h-px bg-main"></div>
+                    <span class="text-secondary text-sm">or</span>
+                    <div class="flex-1 h-px bg-main"></div>
+                </div>
+                <button id="googleSignInBtn" class="w-full bg-white hover:bg-gray-100 text-gray-800 font-medium py-3 rounded-lg transition-all flex items-center justify-center gap-3 border border-gray-300 shadow-md">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google
+                </button>
+                <p class="text-center text-sm text-secondary mt-4">
+                    Don't have an account? 
+                    <button id="showRegisterBtn" class="text-blue-500 hover:text-blue-400 font-medium">Sign Up</button>
+                </p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="registerForm" class="hidden">
+                <form id="registerFormSubmit" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-primary">Username</label>
+                        <input type="text" id="registerUsername" class="w-full bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-primary">Email</label>
+                        <input type="email" id="registerEmail" class="w-full bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-primary">Password</label>
+                        <input type="password" id="registerPassword" class="w-full bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-all shadow-lg">
+                        Send Verification Code
+                    </button>
+                </form>
+                <div class="my-4 flex items-center gap-3">
+                    <div class="flex-1 h-px bg-main"></div>
+                    <span class="text-secondary text-sm">or</span>
+                    <div class="flex-1 h-px bg-main"></div>
+                </div>
+                <button id="googleSignUpBtn" class="w-full bg-white hover:bg-gray-100 text-gray-800 font-medium py-3 rounded-lg transition-all flex items-center justify-center gap-3 border border-gray-300 shadow-md">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign up with Google
+                </button>
+                <p class="text-center text-sm text-secondary mt-4">
+                    Already have an account? 
+                    <button id="showLoginBtn" class="text-blue-500 hover:text-blue-400 font-medium">Sign In</button>
+                </p>
+            </div>
+
+            <!-- Verification Form -->
+            <div id="verificationForm" class="hidden">
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-600/20 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2 text-primary">Verify Your Email</h3>
+                    <p class="text-secondary text-sm">We sent a 6-digit code to <span id="verifyEmail" class="font-medium text-primary"></span></p>
+                </div>
+                <form id="verifyFormSubmit" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-primary">Verification Code</label>
+                        <input type="text" id="verifyCode" maxlength="6" class="w-full bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary text-center text-2xl tracking-widest" placeholder="000000" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-all shadow-lg">
+                        Verify & Create Account
+                    </button>
+                    <button type="button" id="resendCodeBtn" class="w-full text-blue-500 hover:text-blue-400 text-sm font-medium">
+                        Resend Code
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div id="mainApp" class="flex h-screen hidden">
+        
+        <!-- Left Sidebar -->
+        <div class="w-64 bg-tertiary border-r border-main flex flex-col">
+            <!-- Logo -->
+            <div class="p-6 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center font-bold text-white text-lg shadow-lg">
+                        L
+                    </div>
+                    <span class="text-xl font-semibold text-primary">Lumina Notes</span>
+                </div>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="px-4 pb-3">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <input type="text" id="globalSearch" placeholder="Search..." class="w-full bg-secondary border border-main rounded-lg pl-10 pr-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition-colors text-primary">
+                </div>
+            </div>
+
+            <!-- Navigation Items -->
+            <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
+                <button class="nav-item w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-primary" data-page="chat">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    <span data-translate="chat">Chat</span>
+                </button>
+                
+                <!-- Folders Section -->
+                <div class="pt-2">
+                    <div class="flex items-center justify-between px-3 py-2">
+                        <span class="text-xs font-semibold text-secondary uppercase tracking-wide" data-translate="folders">Folders</span>
+                        <button id="newFolderBtnSidebar" class="p-1 hover:bg-secondary rounded transition-colors">
+                            <svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="foldersList" class="space-y-1">
+                        <!-- Folders will be rendered here -->
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Footer -->
+            <div class="p-4 border-t border-main">
+                <a href="https://t.me/ArisDeveloper" target="_blank" class="flex items-center gap-2 text-sm text-secondary hover:text-blue-500 transition-colors">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/>
+                    </svg>
+                    <span>Created by @ArisDeveloper</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            
+            <!-- Top Bar -->
+            <div class="h-16 bg-secondary border-b border-main flex items-center justify-between px-6">
+                <div class="flex items-center gap-4">
+                    <h1 id="pageTitle" class="text-xl font-semibold text-primary">Chat</h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- Theme Selector -->
+                    <select id="themeSelector" class="bg-tertiary border border-main rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 cursor-pointer text-primary">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="forest">Forest</option>
+                        <option value="sunset">Sunset</option>
+                        <option value="lavender">Lavender</option>
+                        <option value="nord">Nord</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="solarized">Solarized</option>
+                    </select>
+                    <!-- Language Switcher -->
+                    <select id="langSwitch" class="bg-tertiary border border-main rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500 cursor-pointer text-primary">
+                        <option value="en">English</option>
+                        <option value="uz">O'zbek</option>
+                        <option value="ru">Русский</option>
+                    </select>
+                    <!-- User Menu -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-sm font-semibold cursor-pointer hover:ring-2 ring-purple-500 transition-all">
+                            <span id="userInitial">U</span>
+                        </button>
+                        <div id="userMenu" class="hidden absolute right-0 mt-2 w-48 bg-secondary border border-main rounded-lg shadow-xl py-2 z-50">
+                            <div class="px-4 py-2 border-b border-main">
+                                <p class="font-medium text-primary" id="userDisplayName">User</p>
+                                <p class="text-xs text-secondary" id="userDisplayEmail">user@example.com</p>
+                            </div>
+                            <button id="logoutBtn" class="w-full px-4 py-2 text-left text-sm hover:bg-tertiary transition-colors text-red-400">
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-hidden">
+                
+                <!-- Chat Page -->
+                <div id="chatPage" class="h-full hidden flex-col">
+                    <div class="flex-1 overflow-y-auto p-6" id="chatMessages">
+                        <div class="max-w-4xl mx-auto space-y-4">
+                            <div class="text-center mb-8">
+                                <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-600/20 to-purple-600/20 flex items-center justify-center shadow-lg">
+                                    <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                    </svg>
+                                </div>
+                                <h2 class="text-3xl font-bold text-primary mb-2" data-translate="chatTitle">AI Assistant</h2>
+                                <p class="text-secondary text-lg" data-translate="chatDesc">Ask me anything, I'm powered by MiniMax 2.5</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 border-t border-main bg-secondary/50 backdrop-blur">
+                        <div class="max-w-4xl mx-auto flex gap-2">
+                            <input type="text" id="chatInput" placeholder="Type your message..." class="flex-1 bg-tertiary border border-main rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 text-primary shadow-sm">
+                            <button id="chatSendBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all flex items-center gap-2 shadow-lg">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Folder Page - Notes List -->
+                <div id="folderPage" class="h-full hidden flex-col">
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <div class="max-w-6xl mx-auto">
+                            <!-- Header with New Note Button -->
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-2xl font-bold text-primary" data-translate="notes">Notes</h2>
+                                <button id="newNoteBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-all flex items-center gap-2 shadow-lg">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    <span data-translate="newNote">New Note</span>
+                                </button>
+                            </div>
+
+                            <!-- Notes Grid -->
+                            <div id="notesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <!-- Notes will be rendered here -->
+                            </div>
+
+                            <!-- Empty State -->
+                            <div id="notesEmptyState" class="hidden text-center py-12">
+                                <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center">
+                                    <svg class="w-10 h-10 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold text-primary mb-2" data-translate="noNotes">No Notes Yet</h3>
+                                <p class="text-secondary" data-translate="createFirstNote">Create your first note to get started</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Note Editor Page -->
+                <div id="noteEditorPage" class="h-full hidden flex-col">
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <div class="max-w-4xl mx-auto">
+                            <!-- Note Title -->
+                            <input type="text" id="noteTitle" placeholder="Note Title..." class="w-full text-3xl font-bold bg-transparent border-none focus:outline-none text-primary mb-6 placeholder-secondary/50">
+
+                            <!-- Rich Text Editor -->
+                            <div class="bg-secondary border border-main rounded-xl overflow-hidden shadow-lg">
+                                <div class="editor-toolbar flex items-center gap-1 p-2 border-b border-main bg-tertiary/50">
+                                    <button data-command="h1" class="p-2 rounded text-sm font-bold hover:bg-secondary" title="Heading 1">H1</button>
+                                    <button data-command="h2" class="p-2 rounded text-sm font-bold hover:bg-secondary" title="Heading 2">H2</button>
+                                    <button data-command="h3" class="p-2 rounded text-sm font-bold hover:bg-secondary" title="Heading 3">H3</button>
+                                    <div class="w-px h-6 bg-main mx-1"></div>
+                                    <button data-command="bold" class="p-2 rounded hover:bg-secondary" title="Bold">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"></path>
+                                        </svg>
+                                    </button>
+                                    <button data-command="italic" class="p-2 rounded hover:bg-secondary" title="Italic">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <line x1="19" y1="4" x2="10" y2="4"></line>
+                                            <line x1="14" y1="20" x2="5" y2="20"></line>
+                                            <line x1="15" y1="4" x2="9" y2="20"></line>
+                                        </svg>
+                                    </button>
+                                    <button data-command="underline" class="p-2 rounded hover:bg-secondary" title="Underline">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3v7a6 6 0 006 6 6 6 0 006-6V3M4 21h16"></path>
+                                        </svg>
+                                    </button>
+                                    <div class="w-px h-6 bg-main mx-1"></div>
+                                    <button data-command="ul" class="p-2 rounded hover:bg-secondary" title="Bullet List">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                    <button data-command="ol" class="p-2 rounded hover:bg-secondary" title="Numbered List">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <line x1="10" y1="6" x2="21" y2="6"></line>
+                                            <line x1="10" y1="12" x2="21" y2="12"></line>
+                                            <line x1="10" y1="18" x2="21" y2="18"></line>
+                                            <path d="M4 6h1v4"></path>
+                                            <path d="M4 10h2"></path>
+                                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div id="noteEditor" contenteditable="true" class="p-6 min-h-[400px] focus:outline-none text-primary" data-placeholder="Start typing your notes..."></div>
+                            </div>
+
+                            <!-- File Upload Area -->
+                            <div id="dropZone" class="mt-6 border-2 border-dashed border-main rounded-xl p-8 text-center hover:border-blue-500/50 transition-all cursor-pointer bg-secondary/50">
+                                <svg class="w-12 h-12 mx-auto mb-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="text-lg font-medium mb-1 text-primary" data-translate="dragDrop">Drag & drop files here</p>
+                                <p class="text-sm text-secondary" data-translate="orClick">or click to browse</p>
+                                <input type="file" id="fileInput" multiple class="hidden">
+                            </div>
+
+                            <!-- Files Grid -->
+                            <div id="filesSection" class="hidden mt-6">
+                                <h3 class="text-lg font-semibold mb-4 text-primary" data-translate="files">Files</h3>
+                                <div id="filesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <!-- Files will be rendered here -->
+                                </div>
+                            </div>
+
+                            <!-- Back Button -->
+                            <button id="backToNotesBtn" class="mt-6 bg-secondary hover:bg-tertiary text-primary font-medium px-4 py-2 rounded-lg transition-all flex items-center gap-2 border border-main">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                </svg>
+                                <span data-translate="backToNotes">Back to Notes</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="modalOverlay" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div id="modalContent" class="bg-secondary border border-main rounded-2xl max-w-md w-full p-6 fade-in shadow-2xl">
+            <!-- Modal content will be inserted here -->
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
